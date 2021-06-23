@@ -33,9 +33,9 @@ func TestFieldsInitiated(t *testing.T) {
 		t.Logf("got error as expected:\n%v", err)
 	}
 	err = FieldsInitiated(myStruct,
-		"Int",
-		"Hello",
-		"Time",
+		Except("Int"),
+		Except("Hello"),
+		Except("Time"),
 	)
 	if err != nil {
 		t.Errorf("expected nil error since simple types excepted. err: %v", err)
