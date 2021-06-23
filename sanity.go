@@ -1,6 +1,7 @@
 package sanity
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 )
@@ -17,12 +18,14 @@ func FieldsInitiated(i interface{}, ee ...string) error {
 	for _, e := range ee {
 		exceptedFieldNames = append(exceptedFieldNames, e)
 	}
-	problems := ""
+	notPublics := ""
+	notSets := ""
 	t := reflect.TypeOf(i)
 	v := reflect.ValueOf(i)
 	for i := 0; i < t.NumField(); i++ {
-		field := v.Field(i)
-		if field.IsZero() {
+		if t.Field(i).PkgPath != "" {
+			notPublics += t.Field(i).Name + "\n"
+		} else if v.Field(i).IsZero() {
 			isExcepted := false
 			for _, e := range exceptedFieldNames {
 				if t.Field(i).Name == e {
@@ -31,12 +34,19 @@ func FieldsInitiated(i interface{}, ee ...string) error {
 				}
 			}
 			if !isExcepted {
-				problems += t.Field(i).Name + "\n"
+				notSets += t.Field(i).Name + "\n"
 			}
 		}
 	}
-	if problems != "" {
-		return fmt.Errorf("Some fields not set on %v.%v:\n%s", t.PkgPath(), t.Name(), problems)
+	errStr := ""
+	if notPublics != "" {
+		errStr += fmt.Sprintf("Some fields not public on %v.%v:\n%s", t.PkgPath(), t.Name(), notPublics)
+	}
+	if notSets != "" {
+		errStr += fmt.Sprintf("Some fields not set on %v.%v:\n%s", t.PkgPath(), t.Name(), notSets)
+	}
+	if errStr != "" {
+		return errors.New(errStr)
 	}
 	return nil
 }
