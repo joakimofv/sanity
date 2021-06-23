@@ -16,7 +16,7 @@ cfg := mypkg.Config{
 }
 
 machine := mypkg.New(cfg)
-if err := machine.Start(); err != mil {
+if err := machine.Start(); err != nil {
 	return err
 }
 ```
