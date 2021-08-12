@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // Except can optionally be used to wrap extra parameters to FieldsInitiated,
@@ -24,7 +25,7 @@ func FieldsInitiated(i interface{}, ee ...string) error {
 	v := reflect.ValueOf(i)
 	for i := 0; i < t.NumField(); i++ {
 		if t.Field(i).PkgPath != "" {
-			notPublics += t.Field(i).Name + "\n"
+			notPublics += "\t" + t.Field(i).Name + "\n"
 		} else if v.Field(i).IsZero() {
 			isExcepted := false
 			for _, e := range exceptedFieldNames {
@@ -34,7 +35,12 @@ func FieldsInitiated(i interface{}, ee ...string) error {
 				}
 			}
 			if !isExcepted {
-				notSets += t.Field(i).Name + "\n"
+				notSets += "\t" + t.Field(i).Name + "\n"
+			}
+		} else if t.Field(i).Type.Kind() == reflect.Struct {
+			// Recursive call for the sub-struct.
+			if err := FieldsInitiated(v.Field(i).Interface(), ee...); err != nil {
+				notSets += "\t" + t.Field(i).Name + ": " + increaseIndents(err.Error()) + "\n"
 			}
 		}
 	}
@@ -49,4 +55,19 @@ func FieldsInitiated(i interface{}, ee ...string) error {
 		return errors.New(errStr)
 	}
 	return nil
+}
+
+func increaseIndents(s string) string {
+	builder := new(strings.Builder)
+	lastWasIndent := false
+	for _, r := range s {
+		if r == '\t' {
+			lastWasIndent = true
+		} else if lastWasIndent {
+			builder.WriteRune('\t')
+			lastWasIndent = false
+		}
+		builder.WriteRune(r)
+	}
+	return builder.String()
 }
