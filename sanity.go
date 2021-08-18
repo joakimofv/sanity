@@ -23,51 +23,65 @@ func FieldsInitiated(i interface{}, ee ...string) error {
 	notSets := ""
 	t := reflect.TypeOf(i)
 	v := reflect.ValueOf(i)
+FIELD_LOOP:
 	for i := 0; i < t.NumField(); i++ {
+		for _, e := range exceptedFieldNames {
+			if t.Field(i).Name == e {
+				continue FIELD_LOOP
+			}
+		}
 		if t.Field(i).PkgPath != "" {
-			notPublics += "\t" + t.Field(i).Name + "\n"
-		} else if v.Field(i).IsZero() {
-			isExcepted := false
-			for _, e := range exceptedFieldNames {
-				if t.Field(i).Name == e {
-					isExcepted = true
-					break
-				}
-			}
-			if !isExcepted {
-				notSets += "\t" + t.Field(i).Name + "\n"
-			}
+			notPublics += t.Field(i).Name + "\n"
 		} else if t.Field(i).Type.Kind() == reflect.Struct {
 			// Recursive call for the sub-struct.
 			if err := FieldsInitiated(v.Field(i).Interface(), ee...); err != nil {
-				notSets += "\t" + t.Field(i).Name + ": " + increaseIndents(err.Error()) + "\n"
+				if errors.As(err, &NotPublicError{}) {
+					notPublics += t.Field(i).Name + " -> " + err.Error() + "\n"
+				} else if v.Field(i).IsZero() {
+					notSets += t.Field(i).Name + "\n"
+				} else {
+					notSets += t.Field(i).Name + " -> " + err.Error() + "\n"
+				}
 			}
+		} else if v.Field(i).IsZero() {
+			notSets += t.Field(i).Name + "\n"
 		}
 	}
-	errStr := ""
 	if notPublics != "" {
-		errStr += fmt.Sprintf("Some fields not public on %v.%v:\n%s", t.PkgPath(), t.Name(), notPublics)
+		return NotPublicError{fmt.Sprintf("Some fields not public on %v.%v:\n%s", t.PkgPath(), t.Name(), addIndent(notPublics))}
 	}
 	if notSets != "" {
-		errStr += fmt.Sprintf("Some fields not set on %v.%v:\n%s", t.PkgPath(), t.Name(), notSets)
-	}
-	if errStr != "" {
-		return errors.New(errStr)
+		return NotSetError{fmt.Sprintf("Some fields not set on %v.%v:\n%s", t.PkgPath(), t.Name(), addIndent(notSets))}
 	}
 	return nil
 }
 
-func increaseIndents(s string) string {
+type NotPublicError struct {
+	err string
+}
+
+func (err NotPublicError) Error() string {
+	return string(err.err)
+}
+
+type NotSetError struct {
+	err string
+}
+
+func (err NotSetError) Error() string {
+	return string(err.err)
+}
+
+func addIndent(s string) string {
+	s = strings.TrimRight(s, "\n")
 	builder := new(strings.Builder)
-	lastWasIndent := false
+	indent := `    `
+	builder.WriteString(indent)
 	for _, r := range s {
-		if r == '\t' {
-			lastWasIndent = true
-		} else if lastWasIndent {
-			builder.WriteRune('\t')
-			lastWasIndent = false
-		}
 		builder.WriteRune(r)
+		if r == '\n' {
+			builder.WriteString(indent)
+		}
 	}
 	return builder.String()
 }

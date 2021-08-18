@@ -1,6 +1,7 @@
 package sanity
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -14,25 +15,23 @@ type publicStruct struct {
 }
 
 func TestFieldsInitiated(t *testing.T) {
-	myStruct := publicStruct{}
-
-	err := FieldsInitiated(myStruct)
+	pubStruct := publicStruct{}
+	err := FieldsInitiated(pubStruct)
 	if err == nil {
 		t.Error("expected error since nothing is set.")
 	} else {
 		t.Logf("got error as expected:\n%v", err)
 	}
 
-	myStruct.Fun1 = func() {}
-	myStruct.Fun2 = func(truth bool) bool { return !truth }
-
-	err = FieldsInitiated(myStruct)
+	pubStruct.Fun1 = func() {}
+	pubStruct.Fun2 = func(truth bool) bool { return !truth }
+	err = FieldsInitiated(pubStruct)
 	if err == nil {
 		t.Error("expected error since simple types not set.")
 	} else {
 		t.Logf("got error as expected:\n%v", err)
 	}
-	err = FieldsInitiated(myStruct,
+	err = FieldsInitiated(pubStruct,
 		Except("Int"),
 		Except("Hello"),
 		Except("Time"),
@@ -41,11 +40,10 @@ func TestFieldsInitiated(t *testing.T) {
 		t.Errorf("expected nil error since simple types excepted. err: %v", err)
 	}
 
-	myStruct.Int = 123
-	myStruct.Hello = "Hi"
-	myStruct.Time = time.Second
-
-	err = FieldsInitiated(myStruct)
+	pubStruct.Int = 123
+	pubStruct.Hello = "Hi"
+	pubStruct.Time = time.Second
+	err = FieldsInitiated(pubStruct)
 	if err != nil {
 		t.Errorf("expected nil error. err: %v", err)
 	}
@@ -58,12 +56,11 @@ type privateStruct struct {
 }
 
 func TestFieldsPublic(t *testing.T) {
-	myStruct := privateStruct{}
-	myStruct.fun = func() {}
-	myStruct.i = 123
-	myStruct.Str = "abc"
-
-	err := FieldsInitiated(myStruct)
+	privStruct := privateStruct{}
+	privStruct.fun = func() {}
+	privStruct.i = 123
+	privStruct.Str = "abc"
+	err := FieldsInitiated(privStruct)
 	if err == nil {
 		t.Error("expected error since some fields are not public.")
 	} else {
@@ -72,8 +69,12 @@ func TestFieldsPublic(t *testing.T) {
 }
 
 type superStruct struct {
-	SubStruct publicStruct
 	Int       int
+	SubStruct publicStruct
+}
+type superStructPriv struct {
+	Int       int
+	SubStruct privateStruct
 }
 
 func TestSubStruct(t *testing.T) {
@@ -93,11 +94,10 @@ func TestSubStruct(t *testing.T) {
 		t.Logf("got error as expected:\n%v", err)
 	}
 
-	myStruct := publicStruct{}
-	myStruct.Fun1 = func() {}
-	myStruct.Fun2 = func(truth bool) bool { return !truth }
-	topStruct.SubStruct = myStruct
-
+	pubStruct := publicStruct{}
+	pubStruct.Fun1 = func() {}
+	pubStruct.Fun2 = func(truth bool) bool { return !truth }
+	topStruct.SubStruct = pubStruct
 	err = FieldsInitiated(topStruct)
 	if err == nil {
 		t.Error("expected error since simple types not set.")
@@ -113,13 +113,20 @@ func TestSubStruct(t *testing.T) {
 		t.Errorf("expected nil error since simple types excepted. err: %v", err)
 	}
 
-	myStruct.Int = 123
-	myStruct.Hello = "Hi"
-	myStruct.Time = time.Second
-	topStruct.SubStruct = myStruct
-
+	pubStruct.Int = 123
+	pubStruct.Hello = "Hi"
+	pubStruct.Time = time.Second
+	topStruct.SubStruct = pubStruct
 	err = FieldsInitiated(topStruct)
 	if err != nil {
 		t.Errorf("expected nil error. err: %v", err)
+	}
+
+	topStruct2 := superStructPriv{} // Not set and not public
+	err = FieldsInitiated(topStruct2)
+	if !errors.As(err, &NotPublicError{}) {
+		t.Errorf("expected NotPublicError error, got err: %v", err)
+	} else {
+		t.Logf("got error as expected:\n%v", err)
 	}
 }
