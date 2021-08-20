@@ -6,7 +6,31 @@ import (
 	"time"
 )
 
-type publicStruct struct {
+type badNameStruct struct {
+	Int int
+}
+type badTypeConfig map[string]int
+
+func TestBadArgument(t *testing.T) {
+	badStruct := badNameStruct{Int: 4}
+	err := FieldsInitiated(badStruct)
+	if err == nil {
+		t.Error("expected error since struct name doesn't end with Config.")
+	} else {
+		t.Logf("got error as expected:\n%v", err)
+	}
+
+	badType := make(badTypeConfig)
+	badType["Int"] = 4
+	err = FieldsInitiated(badType)
+	if err == nil {
+		t.Error("expected error since arg is not a struct.")
+	} else {
+		t.Logf("got error as expected:\n%v", err)
+	}
+}
+
+type publicStructConfig struct {
 	Fun1  func()
 	Fun2  func(bool) bool
 	Int   int
@@ -15,23 +39,23 @@ type publicStruct struct {
 }
 
 func TestFieldsInitiated(t *testing.T) {
-	pubStruct := publicStruct{}
-	err := FieldsInitiated(pubStruct)
+	pubCfg := publicStructConfig{}
+	err := FieldsInitiated(pubCfg)
 	if err == nil {
 		t.Error("expected error since nothing is set.")
 	} else {
 		t.Logf("got error as expected:\n%v", err)
 	}
 
-	pubStruct.Fun1 = func() {}
-	pubStruct.Fun2 = func(truth bool) bool { return !truth }
-	err = FieldsInitiated(pubStruct)
+	pubCfg.Fun1 = func() {}
+	pubCfg.Fun2 = func(truth bool) bool { return !truth }
+	err = FieldsInitiated(pubCfg)
 	if err == nil {
 		t.Error("expected error since simple types not set.")
 	} else {
 		t.Logf("got error as expected:\n%v", err)
 	}
-	err = FieldsInitiated(pubStruct,
+	err = FieldsInitiated(pubCfg,
 		Except("Int"),
 		Except("Hello"),
 		Except("Time"),
@@ -40,27 +64,27 @@ func TestFieldsInitiated(t *testing.T) {
 		t.Errorf("expected nil error since simple types excepted. err: %v", err)
 	}
 
-	pubStruct.Int = 123
-	pubStruct.Hello = "Hi"
-	pubStruct.Time = time.Second
-	err = FieldsInitiated(pubStruct)
+	pubCfg.Int = 123
+	pubCfg.Hello = "Hi"
+	pubCfg.Time = time.Second
+	err = FieldsInitiated(pubCfg)
 	if err != nil {
 		t.Errorf("expected nil error. err: %v", err)
 	}
 }
 
-type privateStruct struct {
+type privateStructConfig struct {
 	fun func()
 	i   int
 	Str string
 }
 
 func TestFieldsPublic(t *testing.T) {
-	privStruct := privateStruct{}
-	privStruct.fun = func() {}
-	privStruct.i = 123
-	privStruct.Str = "abc"
-	err := FieldsInitiated(privStruct)
+	privCfg := privateStructConfig{}
+	privCfg.fun = func() {}
+	privCfg.i = 123
+	privCfg.Str = "abc"
+	err := FieldsInitiated(privCfg)
 	if err == nil {
 		t.Error("expected error since some fields are not public.")
 	} else {
@@ -68,17 +92,17 @@ func TestFieldsPublic(t *testing.T) {
 	}
 }
 
-type superStruct struct {
+type superStructConfig struct {
 	Int       int
-	SubStruct publicStruct
+	SubStruct publicStructConfig
 }
-type superStructPriv struct {
+type superStructPrivConfig struct {
 	Int       int
-	SubStruct privateStruct
+	SubStruct privateStructConfig
 }
 
 func TestSubStruct(t *testing.T) {
-	topStruct := superStruct{}
+	topStruct := superStructConfig{}
 	err := FieldsInitiated(topStruct)
 	if err == nil {
 		t.Error("expected error since nothing is set.")
@@ -94,10 +118,10 @@ func TestSubStruct(t *testing.T) {
 		t.Logf("got error as expected:\n%v", err)
 	}
 
-	pubStruct := publicStruct{}
-	pubStruct.Fun1 = func() {}
-	pubStruct.Fun2 = func(truth bool) bool { return !truth }
-	topStruct.SubStruct = pubStruct
+	pubCfg := publicStructConfig{}
+	pubCfg.Fun1 = func() {}
+	pubCfg.Fun2 = func(truth bool) bool { return !truth }
+	topStruct.SubStruct = pubCfg
 	err = FieldsInitiated(topStruct)
 	if err == nil {
 		t.Error("expected error since simple types not set.")
@@ -113,16 +137,16 @@ func TestSubStruct(t *testing.T) {
 		t.Errorf("expected nil error since simple types excepted. err: %v", err)
 	}
 
-	pubStruct.Int = 123
-	pubStruct.Hello = "Hi"
-	pubStruct.Time = time.Second
-	topStruct.SubStruct = pubStruct
+	pubCfg.Int = 123
+	pubCfg.Hello = "Hi"
+	pubCfg.Time = time.Second
+	topStruct.SubStruct = pubCfg
 	err = FieldsInitiated(topStruct)
 	if err != nil {
 		t.Errorf("expected nil error. err: %v", err)
 	}
 
-	topStruct2 := superStructPriv{} // Not set and not public
+	topStruct2 := superStructPrivConfig{} // Not set and not public
 	err = FieldsInitiated(topStruct2)
 	if !errors.As(err, &NotPublicError{}) {
 		t.Errorf("expected NotPublicError error, got err: %v", err)

@@ -22,6 +22,12 @@ func FieldsInitiated(i interface{}, ee ...string) error {
 	notPublics := ""
 	notSets := ""
 	t := reflect.TypeOf(i)
+	if t.Kind() != reflect.Struct {
+		return fmt.Errorf("Type passed to FieldsInitiated must be of kind 'struct', have '%v'.", t.Kind())
+	}
+	if !strings.HasSuffix(t.Name(), "Config") {
+		return fmt.Errorf("Type passed to FieldsInitiated must be named '[...]Config', have '%v'.", t.Name())
+	}
 	v := reflect.ValueOf(i)
 FIELD_LOOP:
 	for i := 0; i < t.NumField(); i++ {
@@ -32,8 +38,8 @@ FIELD_LOOP:
 		}
 		if t.Field(i).PkgPath != "" {
 			notPublics += t.Field(i).Name + "\n"
-		} else if t.Field(i).Type.Kind() == reflect.Struct {
-			// Recursive call for the sub-struct.
+		} else if t.Field(i).Type.Kind() == reflect.Struct && strings.HasSuffix(t.Field(i).Type.Name(), "Config") {
+			// Recursive call for the nested Config struct.
 			if err := FieldsInitiated(v.Field(i).Interface(), ee...); err != nil {
 				if errors.As(err, &NotPublicError{}) {
 					notPublics += t.Field(i).Name + " -> " + err.Error() + "\n"
