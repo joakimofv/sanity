@@ -1,3 +1,5 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/joakimofv/sanity.svg)](https://pkg.go.dev/github.com/joakimofv/sanity)
+
 # sanity
 
 Opinionated sanity checking of structs. Intended for structs named "Config" that are given to state machines before start up.
@@ -62,6 +64,16 @@ if err := sanity.FieldsInitiated(m.Cfg,
 	sanity.Except("MyInt"),
 	sanity.Except("MyFloat"),
 	sanity.Except("MyBool")); err != nil {
+	return err
+}
+```
+
+## Specific Fields
+
+To check on only specifically specified fields, use the SpecificFieldsInitiated function like this:
+
+```go
+if err := sanity.SpecificFieldsInitiated(m.Cfg,	"MyInt", "MyFloat"); err != nil {
 	return err
 }
 ```

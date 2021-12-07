@@ -154,3 +154,32 @@ func TestSubStruct(t *testing.T) {
 		t.Logf("got error as expected:\n%v", err)
 	}
 }
+
+func TestSpecificFieldsInitiated(t *testing.T) {
+	pubCfg := publicStructConfig{}
+	err := SpecificFieldsInitiated(pubCfg)
+	if err != nil {
+		t.Errorf("expected nil error. err: %v", err)
+	}
+
+	pubCfg.Fun1 = func() {}
+	pubCfg.Fun2 = func(truth bool) bool { return !truth }
+	err = SpecificFieldsInitiated(pubCfg, "Fun1", "Fun2", "Int", "Hello", "Time")
+	if err == nil {
+		t.Error("expected error since simple types not set.")
+	} else {
+		t.Logf("got error as expected:\n%v", err)
+	}
+	err = SpecificFieldsInitiated(pubCfg, "Fun1", "Fun2")
+	if err != nil {
+		t.Errorf("expected nil error since simple types excepted. err: %v", err)
+	}
+
+	pubCfg.Int = 123
+	pubCfg.Hello = "Hi"
+	pubCfg.Time = time.Second
+	err = SpecificFieldsInitiated(pubCfg, "Fun1", "Fun2", "Int", "Hello", "Time")
+	if err != nil {
+		t.Errorf("expected nil error. err: %v", err)
+	}
+}
